@@ -7,9 +7,9 @@ from ocr.documents.doc_04021 import doc_04021
 from ocr.documents.doc_09015 import doc_09015
 from ocr.documents.doc_09029 import doc_09029
 
-reader = easyocr.Reader(['en'], gpu=True)
-reader_english_russian = easyocr.Reader(['en', 'ru'], gpu=True)
-reader_chinese = easyocr.Reader(['en', 'ch_sim'], gpu=True)
+reader = easyocr.Reader(['en'], gpu=False)
+reader_english_russian = easyocr.Reader(['en', 'ru'], gpu=False)
+reader_chinese = easyocr.Reader(['en', 'ch_sim'], gpu=False)
 
 
 def read_document(box_images, pdf_file):
