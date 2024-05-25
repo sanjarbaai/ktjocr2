@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View PDF Pages</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            text-align: center;
+            width: 80%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 50px;
+        }
+        .navbar {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px 20px;
+            background-color: #007bff;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .navbar button {
+            background-color: #fff;
+            color: #007bff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .navbar button:hover {
+            background-color: #0056b3;
+            color: #fff;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
+        }
+        .pdf-pages, .drop-boxes {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .pdf-page {
+            width: 20vh;
+            height: 20vh;
+            border: 2px dashed #00b3b3;
+            background-color: #e0f7f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .pdf-page img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .drop-box {
+            width: 20vh;
+            height: 20vh;
+            border: 2px dashed #ff5733; /* Different border color */
+            background-color: #ffe0e0; /* Different background color */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .drop-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .drop-box .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .drop-box span {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:active {
+            background-color: #004080;
+        }
+        .loading-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .loading-container p {
+            margin: 0;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-bar div {
+            height: 100%;
+            width: 0;
+            background-color: #007bff;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.9);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            margin: auto;
+        }
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .close:hover,
+        .close:focus {
+            color: #bbb;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .zoom-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 35px;
+            display: flex;
+            gap: 10px;
+        }
+        .zoom-controls button {
+            background: white;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            padding: 5px 10px;
+            font-size: 16px;
+        }
+        .modal-caption {
+            position: absolute;
+            bottom: 15px;
+            left: 35px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <button onclick="location.href='{% url 'upload_pdf' %}'">Начать заново</button>
+        </div>
+        <div class="pdf-pages" id="pdf-pages">
+            {% for page in pages %}
+            <div class="pdf-page" id="page-{{ forloop.counter }}" draggable="true" ondragstart="drag(event)">
+                <img src="/{{ page }}" alt="Page {{ forloop.counter }}" onclick="openModal(this, '{{ forloop.counter }}')">
+            </div>
+            {% endfor %}
+        </div>
+        <div class="drop-boxes" id="drop-boxes">
+            {% for box_name in box_names %}
+            <div class="drop-box" id="box{{ box_name }}" data-box-name="{{ box_name }}" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <span>Document {{ box_name }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <button onclick="processOcr()">Next</button>
+        <div class="loading-container" id="loading-container">
+            <p>Processing...</p>
+            <div class="progress-bar">
+                <div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="myModal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="img01">
+        <div class="modal-caption" id="modal-caption"></div>
+        <div class="zoom-controls">
+            <button onclick="zoomIn()">+</button>
+            <button onclick="zoomOut()">-</button>
+        </div>
+    </div>
+
+    <script>
+        // Drag-and-drop functionality
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        function drag(event) {
+            event.dataTransfer.setData("text", event.target.parentNode.id);
+        }
+
+        function drop(event) {
+            event.preventDefault();
+            const imgId = event.dataTransfer.getData("text");
+            const imgElement = document.getElementById(imgId).querySelector('img');
+            const dropBox = event.currentTarget;
+
+            if (imgElement && dropBox) {
+                const boxName = dropBox.dataset.boxName;
+                dropBox.innerHTML = `<img src="${imgElement.src}" alt="Dropped Image" style="width: 100%; height: 100%; object-fit: contain;" onclick="openModal(this, '${boxName}')">
+                                     <button class="delete-btn" onclick="removeImage(this)">x</button>
+                                     <span>Document ${boxName}</span>`;
+            }
+        }
+
+        // Modal functionality
+        function openModal(imgElement, boxName) {
+            var modal = document.getElementById("myModal");
+            var modalImg = document.getElementById("img01");
+            var modalCaption = document.getElementById("modal-caption");
+            modal.style.display = "flex"; // Changed to flex to center the content
+            modalImg.src = imgElement.src;
+            modalCaption.textContent = `Document ${boxName}`;
+
+            // Add event listener for Esc key and zoom keys to close modal and zoom
+            document.addEventListener('keydown', handleKeydown);
+
+            // Reset zoom level
+            modalImg.style.transform = "scale(1)";
+            modalImg.dataset.zoom = 1;
+        }
+
+        function closeModal() {
+            var modal = document.getElementById("myModal");
+            modal.style.display = "none";
+            document.removeEventListener('keydown', handleKeydown);
+        }
+
+        // Remove image from box
+        function removeImage(btn) {
+            var box = btn.parentElement;
+            var boxName = box.dataset.boxName;
+            box.innerHTML = `Document ${boxName}`;
+        }
+
+        // Zoom functionality
+        function zoomIn() {
+            var modalImg = document.getElementById("img01");
+            var zoom = parseFloat(modalImg.dataset.zoom) || 1;
+            zoom += 0.1;
+            modalImg.style.transform = `scale(${zoom})`;
+            modalImg.dataset.zoom = zoom;
+        }
+
+        function zoomOut() {
+            var modalImg = document.getElementById("img01");
+            var zoom = parseFloat(modalImg.dataset.zoom) || 1;
+            if (zoom > 0.1) {
+                zoom -= 0.1;
+                modalImg.style.transform = `scale(${zoom})`;
+                modalImg.dataset.zoom = zoom;
+            }
+        }
+
+        function handleKeydown(event) {
+            if (event.key === "Escape") {
+                closeModal();
+            } else if (event.key === "=" || event.key === "+") {
+                zoomIn();
+            } else if (event.key === "-") {
+                zoomOut();
+            }
+        }
+
+        // Process OCR and send box images to server
+        function processOcr() {
+            const boxes = document.querySelectorAll('.drop-box');
+            const boxImages = {};
+            const loadingContainer = document.getElementById('loading-container');
+            const progressBar = loadingContainer.querySelector('.progress-bar div');
+
+            boxes.forEach(box => {
+                const boxName = box.dataset.boxName;
+                const img = box.querySelector('img');
+                if (img) {
+                    boxImages[boxName] = img.src;
+                } else {
+                    boxImages[boxName] = null;
+                }
+            });
+
+            // Show loading container
+            loadingContainer.style.display = 'flex';
+
+            // Send box images to server
+            fetch('{% url "receive_box_images" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    box_images: boxImages,
+                    pdf_id: '{{ pdf_file.id }}'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = `/results/${data.pdf_id}/`;
+                } else {
+                    alert('An error occurred while processing the OCR.');
+                    loadingContainer.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing the OCR.');
+                loadingContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Results</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            text-align: center;
+            width: 90%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .navbar {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px 20px;
+            background-color: #007bff;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .navbar button {
+            background-color: #fff;
+            color: #007bff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .navbar button:hover {
+            background-color: #0056b3;
+            color: #fff;
+        }
+        .content {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .result-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+            justify-content: space-between;
+        }
+        .original-image, .fields {
+            border: 2px dashed #00b3b3;
+            background-color: #e0f7f7;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px;
+        }
+        .original-image img {
+            width: 300px;
+            height: 300px;
+            object-fit: contain;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        .fields {
+            background: #fff;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            flex-grow: 1;
+            max-width: 600px;
+        }
+        .fields h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: #007bff;
+        }
+        .fields p {
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        .field img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            margin-right: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .field label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .field input {
+            width: 150px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .dialog-overlay.active {
+            display: flex;
+        }
+        .dialog-content {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dialog-content img {
+            max-width: 100%;
+            max-height: 60vh;
+        }
+        .dialog-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #fff;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .dialog-fields {
+            margin-top: 20px;
+            width: 100%;
+        }
+        .dialog-field {
+            margin-bottom: 10px;
+        }
+        .dialog-field label {
+            font-weight: bold;
+        }
+        .dialog-field input {
+            width: 100%;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <button onclick="location.href='{% url 'upload_pdf' %}'">Начать заново</button>
+        </div>
+        <h1>Подтвердите оцифрованные данные</h1>
+        <div class="content results">
+            {% for document in documents %}
+                <div class="result-row" data-document-id="{{ forloop.counter0 }}">
+                    <!-- Original Image -->
+                    <div class="original-image">
+                        <img src="{{ document.original_image }}" alt="Original Image" onclick="showDialog(this.src, {{ forloop.counter0 }})">
+                    </div>
+                    <!-- Fields and Values -->
+                    <div class="fields">
+                        <p>Код: {{ document.name }}</p>
+                        {% load custom_filters %}
+                        {% for field in document.fields %}
+                            <div class="field">
+                                {% if field.image == 'not found' %}
+                                    <div style="width: 150px; height: 150px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px;"></div>
+                                {% else %}
+                                    <img src="/{{ field.image }}" alt="Field Image" onclick="showDialog(this.src, {{ forloop.parent.counter0 }})">
+                                {% endif %}
+                                {% with first_item=field|first_key_value %}
+                                     <p>{{ first_item.0 }}</p>
+                                     <input type="text" value="{{ first_item.1 }}">
+                                {% endwith %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Dialog for image zoom -->
+    <div class="dialog-overlay" id="dialogOverlay" onclick="closeDialog()">
+        <div class="dialog-content" onclick="event.stopPropagation()">
+            <button class="dialog-close" onclick="closeDialog()">×</button>
+            <img id="dialogImage" src="" alt="Zoomed Image">
+            <div class="dialog-fields" id="dialogFields">
+                <!-- Fields will be injected here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDocumentId = null;
+
+        function showDialog(src, documentId) {
+            currentDocumentId = documentId;
+            const dialogOverlay = document.getElementById('dialogOverlay');
+            const dialogImage = document.getElementById('dialogImage');
+            const dialogFields = document.getElementById('dialogFields');
+
+            // Set the image source
+            dialogImage.src = src;
+
+            // Clear previous fields
+            dialogFields.innerHTML = '';
+
+            // Get fields from the main view
+            const documentRow = document.querySelector(`.result-row[data-document-id="${documentId}"]`);
+            const fields = documentRow.querySelectorAll('.field');
+
+            // Add fields to the dialog
+            fields.forEach(field => {
+                const value = field.querySelector('input').value;
+                const image = field.querySelector('img').src;
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'dialog-field';
+                fieldDiv.innerHTML = `<input type="text" value="${value}">`;
+                dialogFields.appendChild(fieldDiv);
+            });
+
+            dialogOverlay.classList.add('active');
+        }
+
+        function closeDialog() {
+            const dialogOverlay = document.getElementById('dialogOverlay');
+            dialogOverlay.classList.remove('active');
+        }
+
+        // Close dialog on 'Esc' key press
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeDialog();
+            }
+        });
+    </script>
+</body>
+</html>
