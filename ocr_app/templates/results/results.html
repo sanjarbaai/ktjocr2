@@ -206,6 +206,7 @@
                     </div>
                 </div>
             {% endfor %}
+            <button onclick="sendJSON()">Download JSON</button>
         </div>
     </div>
     <!-- Dialog for image zoom -->
@@ -262,6 +263,75 @@
                 closeDialog();
             }
         });
+        function sendJSON() {
+        const documents = [];
+        const resultRows = document.querySelectorAll('.result-row');
+
+        resultRows.forEach(row => {
+            const documentId = row.getAttribute('data-document-id');
+            const originalImage = row.querySelector('.original-image img').src;
+            const code = row.querySelector('.fields p').innerText.split(': ')[1];
+
+            const fields = {};
+            const fieldElements = row.querySelectorAll('.field');
+
+            fieldElements.forEach(field => {
+                const key = field.querySelector('p').innerText;
+                const value = field.querySelector('input').value;
+                fields[key] = value;
+            });
+
+            documents.push({
+                id: documentId,
+                original_image: originalImage,
+                code: code,
+                fields: fields
+            });
+        });
+
+        const jsonData = JSON.stringify(documents);
+        const csrfToken = getCookie('csrftoken');
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: jsonData
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'ocr_results.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+
+
     </script>
 </body>
 </html>

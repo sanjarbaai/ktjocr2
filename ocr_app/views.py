@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 
 from ocr.ocr import read_document
+from ocr.utils.excel_creator import create_excel
 from ocr.utils.pdf_reader import extract_pages
 
 from .models import PDFFile, OCRResult
@@ -34,7 +35,7 @@ def view_pdf(request, pdf_id):
     if not pages:
         return render(request, 'error/error.html', {'message': 'An error occurred while processing the PDF.'})
 
-    box_names = ["09029", "04021", "02016", "01207", "01707", "09015"]
+    box_names = ["09029", "04021", "02016", "01207", "01707", "09015", '06999']
     context = {
         'pdf_file': pdf_file,
         'pages': pages,
@@ -68,6 +69,15 @@ def receive_box_images(request):
 
 @login_required
 def ocr_results(request, pdf_id):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        pdf_file = get_object_or_404(PDFFile, id=pdf_id, user=request.user)
+        excel_file = create_excel(data, pdf_file=pdf_file)
+        excel_response = HttpResponse(excel_file, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        excel_response['Content-Disposition'] = 'attachment; filename="ocr_results.xlsx"'
+        return excel_response 
+
+    
     pdf_file = get_object_or_404(PDFFile, id=pdf_id, user=request.user)
 
     documents_json = request.session.get('documents', '[]')
